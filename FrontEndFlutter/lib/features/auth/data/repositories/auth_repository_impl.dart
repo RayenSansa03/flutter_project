@@ -87,6 +87,35 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<Either<Failure, UserEntity>> updateProfile({String? firstName, String? lastName}) async {
+    try {
+      final user = await remoteDataSource.updateProfile(
+        firstName: firstName,
+        lastName: lastName,
+      );
+      await localDataSource.saveUser(user);
+      return Right(user);
+    } on AppException catch (e) {
+      return Left(mapExceptionToFailure(e));
+    } catch (e) {
+      return Left(ServerFailure('Erreur inattendue: ${e.toString()}'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, UserEntity>> uploadProfileImage(String imagePath) async {
+    try {
+      final user = await remoteDataSource.uploadProfileImage(imagePath);
+      await localDataSource.saveUser(user);
+      return Right(user);
+    } on AppException catch (e) {
+      return Left(mapExceptionToFailure(e));
+    } catch (e) {
+      return Left(ServerFailure('Erreur inattendue: ${e.toString()}'));
+    }
+  }
+
+  @override
   Future<Either<Failure, void>> logout() async {
     try {
       await localDataSource.deleteToken();

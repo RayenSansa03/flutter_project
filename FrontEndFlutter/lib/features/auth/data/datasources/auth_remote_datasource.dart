@@ -16,6 +16,8 @@ abstract class AuthRemoteDataSource {
   });
   Future<AuthResponseModel> verifyEmail(String tempToken, String code);
   Future<UserModel> getProfile();
+  Future<UserModel> updateProfile({String? firstName, String? lastName});
+  Future<UserModel> uploadProfileImage(String imagePath);
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -173,13 +175,69 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         throw ServerException('Réponse invalide du serveur');
       }
 
+      final data = response.data!;
+      
+      // Le backend peut retourner directement l'objet ou dans un format ApiResponse
+      if (data.containsKey('id')) {
+        // Format direct : { id, email, firstName, ... }
+        return UserModel.fromJson(data);
+      } else if (data.containsKey('success')) {
+        // Format ApiResponse : { success, data, message }
+        final apiResponse = ApiResponse<Map<String, dynamic>>.fromJson(
+          data,
+          (json) => json as Map<String, dynamic>,
+        );
+
+        if (!apiResponse.success || apiResponse.data == null) {
+          throw ServerException(apiResponse.message ?? 'Erreur lors de la récupération du profil');
+        }
+
+        return UserModel.fromJson(apiResponse.data!);
+      } else {
+        throw ServerException('Format de réponse inattendu');
+      }
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        throw UnauthorizedException('Non autorisé');
+      }
+      final errorMessage = e.response?.data?['message'] ?? e.message ?? 'Erreur lors de la récupération du profil';
+      throw ServerException(errorMessage);
+    } catch (e) {
+      if (e is AppException) rethrow;
+      throw ServerException('Erreur inattendue: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<UserModel> updateProfile({String? firstName, String? lastName}) async {
+    try {
+      final response = await apiClient.put<Map<String, dynamic>>(
+        '/auth/profile',
+        data: {
+          if (firstName != null) 'firstName': firstName,
+          if (lastName != null) 'lastName': lastName,
+        },
+      );
+
+      if (response.data == null) {
+        throw ServerException('Réponse invalide du serveur');
+      }
+
+      final data = response.data!;
+      
+      // Si la réponse contient directement les données utilisateur
+      if (data.containsKey('id')) {
+        return UserModel.fromJson(data);
+      }
+      
+      // Sinon, c'est le format ApiResponse
       final apiResponse = ApiResponse<Map<String, dynamic>>.fromJson(
-        response.data!,
+        data,
         (json) => json as Map<String, dynamic>,
       );
 
       if (!apiResponse.success || apiResponse.data == null) {
-        throw ServerException(apiResponse.message ?? 'Erreur lors de la récupération du profil');
+        throw ServerException(apiResponse.message ?? 'Erreur lors de la mise à jour');
       }
 
       return UserModel.fromJson(apiResponse.data!);
@@ -187,7 +245,57 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       if (e.response?.statusCode == 401) {
         throw UnauthorizedException('Non autorisé');
       }
-      throw ServerException('Erreur lors de la récupération du profil: ${e.message}');
+      throw ServerException('Erreur lors de la mise à jour: ${e.message}');
+    } catch (e) {
+      if (e is AppException) rethrow;
+      throw ServerException('Erreur inattendue: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<UserModel> uploadProfileImage(String imagePath) async {
+    try {
+      final formData = FormData.fromMap({
+        'image': await MultipartFile.fromFile(imagePath),
+      });
+
+      final response = await apiClient.post<Map<String, dynamic>>(
+        '/auth/profile/upload-image',
+        data: formData,
+        options: Options(
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        ),
+      );
+
+      if (response.data == null) {
+        throw ServerException('Réponse invalide du serveur');
+      }
+
+      final data = response.data!;
+      
+      // Si la réponse contient directement les données utilisateur
+      if (data.containsKey('id')) {
+        return UserModel.fromJson(data);
+      }
+      
+      // Sinon, c'est le format ApiResponse
+      final apiResponse = ApiResponse<Map<String, dynamic>>.fromJson(
+        data,
+        (json) => json as Map<String, dynamic>,
+      );
+
+      if (!apiResponse.success || apiResponse.data == null) {
+        throw ServerException(apiResponse.message ?? 'Erreur lors de l\'upload');
+      }
+
+      return UserModel.fromJson(apiResponse.data!);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        throw UnauthorizedException('Non autorisé');
+      }
+      throw ServerException('Erreur lors de l\'upload: ${e.message}');
     } catch (e) {
       if (e is AppException) rethrow;
       throw ServerException('Erreur inattendue: ${e.toString()}');

@@ -71,3 +71,26 @@ class ResendVerificationCodeEvent extends AuthEvent {
   @override
   List<Object?> get props => [email, password, firstName, lastName];
 }
+
+class GetProfileEvent extends AuthEvent {
+  const GetProfileEvent();
+}
+
+class UpdateProfileEvent extends AuthEvent {
+  final String? firstName;
+  final String? lastName;
+
+  const UpdateProfileEvent({this.firstName, this.lastName});
+
+  @override
+  List<Object?> get props => [firstName, lastName];
+}
+
+class UploadProfileImageEvent extends AuthEvent {
+  final String imagePath;
+
+  const UploadProfileImageEvent({required this.imagePath});
+
+  @override
+  List<Object?> get props => [imagePath];
+}

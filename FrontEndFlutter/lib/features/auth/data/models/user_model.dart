@@ -10,6 +10,7 @@ class UserModel extends UserEntity {
     required super.email,
     super.firstName,
     super.lastName,
+    super.image,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) : super(
@@ -47,6 +48,7 @@ class UserModel extends UserEntity {
       email: json['email'] as String,
       firstName: json['firstName'] as String?,
       lastName: json['lastName'] as String?,
+      image: json['image'] as String?,
       createdAt: createdAt,
       updatedAt: updatedAt,
     );
@@ -60,6 +62,7 @@ class UserModel extends UserEntity {
       email: entity.email,
       firstName: entity.firstName,
       lastName: entity.lastName,
+      image: entity.image,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
     );

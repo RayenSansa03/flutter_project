@@ -49,8 +49,8 @@ class _LoginPageState extends State<LoginPage> {
       body: BlocConsumer<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthAuthenticated) {
-            // Navigation vers la page d'accueil
-            context.go('/home');
+            // Navigation vers le profil après connexion
+            context.go('/profile');
           } else if (state is AuthError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(

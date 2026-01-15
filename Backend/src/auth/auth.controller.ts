@@ -4,20 +4,27 @@ import {
   Body,
   UseGuards,
   Get,
+  Put,
+  UploadedFile,
+  UseInterceptors,
   HttpCode,
   HttpStatus,
+  NotFoundException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
   ApiBody,
+  ApiConsumes,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { RegisterResponseDto } from './dto/register-response.dto';
 import { UserResponseDto } from './dto/user-response.dto';
@@ -120,8 +127,72 @@ export class AuthController {
   async getProfile(@CurrentUser() user: any): Promise<UserResponseDto> {
     const userProfile = await this.authService.findById(user.userId);
     if (!userProfile) {
-      throw new Error('Utilisateur non trouvé');
+      throw new NotFoundException('Utilisateur non trouvé');
     }
-    return userProfile;
+    return {
+      id: userProfile.id,
+      email: userProfile.email,
+      firstName: userProfile.firstName,
+      lastName: userProfile.lastName,
+      image: userProfile.image,
+      createdAt: userProfile.createdAt,
+      updatedAt: userProfile.updatedAt,
+    };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('profile')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Mettre à jour le profil de l\'utilisateur',
+    description: 'Met à jour les informations du profil (prénom, nom)',
+  })
+  @ApiBody({ type: UpdateProfileDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Profil mis à jour avec succès',
+    type: UserResponseDto,
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Non autorisé - Token invalide ou manquant',
+  })
+  async updateProfile(
+    @CurrentUser() user: any,
+    @Body() updateProfileDto: UpdateProfileDto,
+  ): Promise<UserResponseDto> {
+    return this.authService.updateProfile(user.userId, updateProfileDto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('profile/upload-image')
+  @ApiBearerAuth('JWT-auth')
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: 'Uploader une image de profil',
+    description: 'Upload une image de profil sur Cloudinary et met à jour le profil',
+  })
+  @UseInterceptors(FileInterceptor('image'))
+  @ApiResponse({
+    status: 200,
+    description: 'Image uploadée avec succès',
+    type: UserResponseDto,
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Non autorisé - Token invalide ou manquant',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Fichier invalide',
+  })
+  async uploadProfileImage(
+    @CurrentUser() user: any,
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<UserResponseDto> {
+    if (!file) {
+      throw new Error('Aucun fichier fourni');
+    }
+    return this.authService.uploadProfileImage(user.userId, file);
   }
 }

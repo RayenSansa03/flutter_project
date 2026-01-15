@@ -31,6 +31,9 @@ export class User {
   @Column({ nullable: true })
   lastName: string;
 
+  @Column({ nullable: true })
+  image: string; // URL Cloudinary de l'image de profil
+
   @CreateDateColumn()
   createdAt: Date;
 

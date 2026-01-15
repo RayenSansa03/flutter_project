@@ -3,6 +3,7 @@ import {
   ConflictException,
   UnauthorizedException,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -12,7 +13,9 @@ import { User } from './entities/user.entity';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { EmailService } from './email.service';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 @Injectable()
 export class AuthService {
@@ -21,6 +24,7 @@ export class AuthService {
     private userRepository: Repository<User>,
     private jwtService: JwtService,
     private emailService: EmailService,
+    private cloudinaryService: CloudinaryService,
   ) {}
 
   async register(registerDto: RegisterDto) {
@@ -118,6 +122,7 @@ export class AuthService {
         email: savedUser.email,
         firstName: savedUser.firstName,
         lastName: savedUser.lastName,
+        image: savedUser.image,
       },
     };
   }
@@ -154,6 +159,7 @@ export class AuthService {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+        image: user.image,
       },
     };
   }
@@ -181,7 +187,58 @@ export class AuthService {
   async findById(id: string): Promise<User | null> {
     return this.userRepository.findOne({
       where: { id },
-      select: ['id', 'email', 'firstName', 'lastName', 'createdAt', 'updatedAt'],
+      select: ['id', 'email', 'firstName', 'lastName', 'image', 'createdAt', 'updatedAt'],
     });
+  }
+
+  async updateProfile(userId: string, updateProfileDto: UpdateProfileDto): Promise<User> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    
+    if (!user) {
+      throw new NotFoundException('Utilisateur non trouvé');
+    }
+
+    if (updateProfileDto.firstName !== undefined) {
+      user.firstName = updateProfileDto.firstName;
+    }
+    if (updateProfileDto.lastName !== undefined) {
+      user.lastName = updateProfileDto.lastName;
+    }
+
+    return this.userRepository.save(user);
+  }
+
+  async uploadProfileImage(userId: string, file: Express.Multer.File): Promise<User> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    
+    if (!user) {
+      throw new NotFoundException('Utilisateur non trouvé');
+    }
+
+    try {
+      // Supprimer l'ancienne image si elle existe
+      if (user.image) {
+        try {
+          // Extraire le public_id de l'URL Cloudinary
+          const urlParts = user.image.split('/');
+          const publicIdWithExt = urlParts[urlParts.length - 1];
+          const publicId = publicIdWithExt.split('.')[0];
+          const folder = 'productivity_profiles';
+          await this.cloudinaryService.deleteImage(`${folder}/${publicId}`);
+        } catch (error) {
+          console.error('Erreur lors de la suppression de l\'ancienne image:', error);
+          // Continuer même si la suppression échoue
+        }
+      }
+
+      // Uploader la nouvelle image
+      const result = await this.cloudinaryService.uploadImage(file);
+      user.image = result.secure_url;
+
+      return this.userRepository.save(user);
+    } catch (error) {
+      console.error('Erreur lors de l\'upload de l\'image:', error);
+      throw new InternalServerErrorException('Erreur lors de l\'upload de l\'image');
+    }
   }
 }

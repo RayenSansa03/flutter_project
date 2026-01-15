@@ -25,6 +25,12 @@ export class UserResponseDto {
   })
   lastName?: string;
 
+  @ApiPropertyOptional({
+    description: 'URL de l\'image de profil (Cloudinary)',
+    example: 'https://res.cloudinary.com/dd72uedgl/image/upload/v1234567890/productivity_profiles/abc123.jpg',
+  })
+  image?: string;
+
   @ApiProperty({
     description: 'Date de création du compte',
     example: '2024-01-01T00:00:00.000Z',

@@ -10,6 +10,9 @@ import 'package:projet_flutter/features/auth/domain/repositories/auth_repository
 import 'package:projet_flutter/features/auth/domain/usecases/login_usecase.dart';
 import 'package:projet_flutter/features/auth/domain/usecases/register_usecase.dart';
 import 'package:projet_flutter/features/auth/domain/usecases/verify_email_usecase.dart';
+import 'package:projet_flutter/features/auth/domain/usecases/get_profile_usecase.dart';
+import 'package:projet_flutter/features/auth/domain/usecases/update_profile_usecase.dart';
+import 'package:projet_flutter/features/auth/domain/usecases/upload_profile_image_usecase.dart';
 import 'package:projet_flutter/features/auth/domain/usecases/logout_usecase.dart';
 import 'package:projet_flutter/features/auth/presentation/bloc/auth_bloc.dart';
 
@@ -61,6 +64,18 @@ Future<void> configureDependencies() async {
     () => VerifyEmailUseCase(getIt()),
   );
 
+  getIt.registerLazySingleton<GetProfileUseCase>(
+    () => GetProfileUseCase(getIt()),
+  );
+
+  getIt.registerLazySingleton<UpdateProfileUseCase>(
+    () => UpdateProfileUseCase(getIt()),
+  );
+
+  getIt.registerLazySingleton<UploadProfileImageUseCase>(
+    () => UploadProfileImageUseCase(getIt()),
+  );
+
   getIt.registerLazySingleton<LogoutUseCase>(
     () => LogoutUseCase(getIt()),
   );
@@ -71,6 +86,9 @@ Future<void> configureDependencies() async {
       loginUseCase: getIt(),
       registerUseCase: getIt(),
       verifyEmailUseCase: getIt(),
+      getProfileUseCase: getIt(),
+      updateProfileUseCase: getIt(),
+      uploadProfileImageUseCase: getIt(),
       logoutUseCase: getIt(),
     ),
   );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:projet_flutter/features/auth/presentation/pages/login_page.dart';
 import 'package:projet_flutter/features/auth/presentation/pages/signup_page.dart';
+import 'package:projet_flutter/features/auth/presentation/pages/profile_page.dart';
 
 class AppRouter {
   static GoRouter get router => _router;
@@ -24,6 +25,11 @@ class AppRouter {
         name: 'home',
         builder: (context, state) => const HomePage(),
       ),
+      GoRoute(
+        path: '/profile',
+        name: 'profile',
+        builder: (context, state) => const ProfilePage(),
+      ),
     ],
   );
 }
@@ -36,6 +42,12 @@ class HomePage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Accueil'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () => context.go('/profile'),
+          ),
+        ],
       ),
       body: const Center(
         child: Text('Bienvenue !'),

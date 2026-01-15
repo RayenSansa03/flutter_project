@@ -12,6 +12,8 @@ abstract class AuthRepository {
   });
   Future<Either<Failure, UserEntity>> verifyEmail(String tempToken, String code);
   Future<Either<Failure, UserEntity>> getProfile();
+  Future<Either<Failure, UserEntity>> updateProfile({String? firstName, String? lastName});
+  Future<Either<Failure, UserEntity>> uploadProfileImage(String imagePath);
   Future<Either<Failure, void>> logout();
   Future<Either<Failure, bool>> isAuthenticated();
 }

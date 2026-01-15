@@ -3,6 +3,9 @@ import 'package:projet_flutter/core/errors/failures.dart';
 import 'package:projet_flutter/features/auth/domain/usecases/login_usecase.dart';
 import 'package:projet_flutter/features/auth/domain/usecases/register_usecase.dart';
 import 'package:projet_flutter/features/auth/domain/usecases/verify_email_usecase.dart';
+import 'package:projet_flutter/features/auth/domain/usecases/get_profile_usecase.dart';
+import 'package:projet_flutter/features/auth/domain/usecases/update_profile_usecase.dart';
+import 'package:projet_flutter/features/auth/domain/usecases/upload_profile_image_usecase.dart';
 import 'package:projet_flutter/features/auth/domain/usecases/logout_usecase.dart';
 import 'package:projet_flutter/features/auth/presentation/bloc/auth_event.dart';
 import 'package:projet_flutter/features/auth/presentation/bloc/auth_state.dart';
@@ -11,6 +14,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final LoginUseCase loginUseCase;
   final RegisterUseCase registerUseCase;
   final VerifyEmailUseCase verifyEmailUseCase;
+  final GetProfileUseCase getProfileUseCase;
+  final UpdateProfileUseCase updateProfileUseCase;
+  final UploadProfileImageUseCase uploadProfileImageUseCase;
   final LogoutUseCase logoutUseCase;
 
   // Stocker les données d'inscription pour le renvoi du code
@@ -23,12 +29,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required this.loginUseCase,
     required this.registerUseCase,
     required this.verifyEmailUseCase,
+    required this.getProfileUseCase,
+    required this.updateProfileUseCase,
+    required this.uploadProfileImageUseCase,
     required this.logoutUseCase,
   }) : super(AuthInitial()) {
     on<LoginEvent>(_onLogin);
     on<RegisterEvent>(_onRegister);
     on<VerifyEmailEvent>(_onVerifyEmail);
     on<ResendVerificationCodeEvent>(_onResendVerificationCode);
+    on<GetProfileEvent>(_onGetProfile);
+    on<UpdateProfileEvent>(_onUpdateProfile);
+    on<UploadProfileImageEvent>(_onUploadProfileImage);
     on<LogoutEvent>(_onLogout);
     on<CheckAuthEvent>(_onCheckAuth);
   }
@@ -40,7 +52,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     
     result.fold(
       (failure) => emit(AuthError(_mapFailureToMessage(failure))),
-      (user) => emit(AuthAuthenticated(user)),
+      (user) {
+        // Après connexion, charger le profil complet pour avoir toutes les données
+        emit(AuthAuthenticated(user));
+      },
     );
   }
 
@@ -123,6 +138,42 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     result.fold(
       (failure) => emit(AuthError(_mapFailureToMessage(failure))),
       (_) => emit(AuthUnauthenticated()),
+    );
+  }
+
+  Future<void> _onGetProfile(GetProfileEvent event, Emitter<AuthState> emit) async {
+    emit(AuthLoading());
+    
+    final result = await getProfileUseCase();
+    
+    result.fold(
+      (failure) => emit(AuthError(_mapFailureToMessage(failure))),
+      (user) => emit(AuthAuthenticated(user)),
+    );
+  }
+
+  Future<void> _onUpdateProfile(UpdateProfileEvent event, Emitter<AuthState> emit) async {
+    emit(AuthLoading());
+    
+    final result = await updateProfileUseCase(
+      firstName: event.firstName,
+      lastName: event.lastName,
+    );
+    
+    result.fold(
+      (failure) => emit(AuthError(_mapFailureToMessage(failure))),
+      (user) => emit(AuthAuthenticated(user)),
+    );
+  }
+
+  Future<void> _onUploadProfileImage(UploadProfileImageEvent event, Emitter<AuthState> emit) async {
+    emit(AuthLoading());
+    
+    final result = await uploadProfileImageUseCase(event.imagePath);
+    
+    result.fold(
+      (failure) => emit(AuthError(_mapFailureToMessage(failure))),
+      (user) => emit(AuthAuthenticated(user)),
     );
   }
 
