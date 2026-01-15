@@ -24,17 +24,30 @@ export class HttpExceptionFilter implements ExceptionFilter {
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const message =
-      exception instanceof HttpException
-        ? exception.getResponse()
-        : 'Internal server error';
+    let message: string;
+    if (exception instanceof HttpException) {
+      const response = exception.getResponse();
+      if (typeof response === 'string') {
+        message = response;
+      } else if (typeof response === 'object' && response !== null) {
+        message = (response as any).message || exception.message || 'Une erreur est survenue';
+        // Si message est un tableau (erreurs de validation), prendre le premier élément
+        if (Array.isArray(message)) {
+          message = message[0] || 'Erreur de validation';
+        }
+      } else {
+        message = exception.message || 'Une erreur est survenue';
+      }
+    } else {
+      message = 'Internal server error';
+    }
 
     response.status(status).json({
       success: false,
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,
-      message: typeof message === 'string' ? message : (message as any).message,
+      message,
     });
   }
 }

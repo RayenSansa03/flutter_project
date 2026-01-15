@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:projet_flutter/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:projet_flutter/features/auth/presentation/bloc/auth_event.dart';
 import 'package:projet_flutter/features/auth/presentation/bloc/auth_state.dart';
+import 'package:projet_flutter/features/auth/presentation/widgets/email_verification_sheet.dart';
 import 'package:projet_flutter/shared/widgets/custom_text_field.dart';
 import 'package:projet_flutter/shared/widgets/custom_button.dart';
 import 'package:projet_flutter/shared/widgets/social_button.dart';
@@ -22,6 +24,20 @@ class _SignupPageState extends State<SignupPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  
+  // Pour le popup de vérification
+  String? _tempToken;
+  final _pinController = TextEditingController();
+  String? _verificationError;
+  Timer? _resendTimer;
+  int _resendSecondsRemaining = 0;
+  bool _canResend = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startResendTimer();
+  }
 
   @override
   void dispose() {
@@ -30,7 +46,27 @@ class _SignupPageState extends State<SignupPage> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _pinController.dispose();
+    _resendTimer?.cancel();
     super.dispose();
+  }
+
+  void _startResendTimer() {
+    _resendSecondsRemaining = 60; // 60 secondes
+    _canResend = false;
+    _resendTimer?.cancel();
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_resendSecondsRemaining > 0) {
+        setState(() {
+          _resendSecondsRemaining--;
+        });
+      } else {
+        setState(() {
+          _canResend = true;
+        });
+        timer.cancel();
+      }
+    });
   }
 
   void _handleSignup() {
@@ -57,25 +93,44 @@ class _SignupPageState extends State<SignupPage> {
       body: BlocConsumer<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthAuthenticated) {
+            _resendTimer?.cancel();
             context.go('/home');
+          } else if (state is EmailVerificationRequired) {
+            setState(() {
+              _tempToken = state.tempToken;
+              _verificationError = null;
+              _pinController.clear();
+            });
+            _startResendTimer();
           } else if (state is AuthError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: Colors.red,
-              ),
-            );
+            if (_tempToken != null) {
+              // Erreur lors de la vérification
+              setState(() {
+                _verificationError = state.message;
+              });
+            } else {
+              // Erreur lors de l'inscription
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
           }
         },
         builder: (context, state) {
           final isLoading = state is AuthLoading;
+          final showVerificationSheet = _tempToken != null;
 
-          return SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Form(
-                key: _formKey,
-                child: Column(
+          return Stack(
+            children: [
+              SafeArea(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const SizedBox(height: 40),
@@ -295,13 +350,71 @@ class _SignupPageState extends State<SignupPage> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 40),
-                  ],
+                      const SizedBox(height: 40),
+                    ],
+                  ),
                 ),
               ),
             ),
+              // Popup de vérification email
+              if (showVerificationSheet)
+                _buildVerificationSheet(context, isLoading),
+            ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildVerificationSheet(BuildContext context, bool isLoading) {
+    return Container(
+      color: Colors.black54,
+      child: DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.5,
+        maxChildSize: 0.9,
+        builder: (context, scrollController) => EmailVerificationSheet(
+          email: _emailController.text.trim(),
+          errorMessage: _verificationError,
+          isLoading: isLoading,
+          resendSecondsRemaining: _resendSecondsRemaining,
+          canResend: _canResend,
+          pinController: _pinController,
+          onVerify: () {
+            if (_tempToken != null && _pinController.text.length == 6) {
+              context.read<AuthBloc>().add(
+                    VerifyEmailEvent(
+                      tempToken: _tempToken!,
+                      code: _pinController.text,
+                    ),
+                  );
+            }
+          },
+          onCancel: () {
+            setState(() {
+              _tempToken = null;
+              _pinController.clear();
+              _verificationError = null;
+            });
+            _resendTimer?.cancel();
+          },
+          onResend: _canResend
+              ? () {
+                  context.read<AuthBloc>().add(
+                        ResendVerificationCodeEvent(
+                          email: _emailController.text.trim(),
+                          password: _passwordController.text,
+                          firstName: _firstNameController.text.trim().isEmpty
+                              ? null
+                              : _firstNameController.text.trim(),
+                          lastName: _lastNameController.text.trim().isEmpty
+                              ? null
+                              : _lastNameController.text.trim(),
+                        ),
+                      );
+                }
+              : null,
+        ),
       ),
     );
   }

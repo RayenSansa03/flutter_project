@@ -3,16 +3,18 @@ import 'package:projet_flutter/core/network/api_client.dart';
 import 'package:projet_flutter/core/network/api_response.dart';
 import 'package:projet_flutter/core/errors/exceptions.dart';
 import 'package:projet_flutter/features/auth/data/models/auth_response_model.dart';
+import 'package:projet_flutter/features/auth/data/models/register_response_model.dart';
 import 'package:projet_flutter/features/auth/data/models/user_model.dart';
 
 abstract class AuthRemoteDataSource {
   Future<AuthResponseModel> login(String email, String password);
-  Future<AuthResponseModel> register({
+  Future<RegisterResponseModel> register({
     required String email,
     required String password,
     String? firstName,
     String? lastName,
   });
+  Future<AuthResponseModel> verifyEmail(String tempToken, String code);
   Future<UserModel> getProfile();
 }
 
@@ -68,7 +70,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<AuthResponseModel> register({
+  Future<RegisterResponseModel> register({
     required String email,
     required String password,
     String? firstName,
@@ -89,7 +91,50 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         throw ServerException('Réponse invalide du serveur');
       }
 
-      // Le backend retourne directement { success, data, message } ou { access_token, user }
+      final data = response.data!;
+      
+      // Le backend retourne maintenant { message, tempToken }
+      return RegisterResponseModel.fromJson(data);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 409) {
+        throw ValidationException('Un utilisateur avec cet email existe déjà');
+      }
+      
+      // Extraire le message d'erreur du serveur si disponible
+      String errorMessage = 'Erreur lors de l\'inscription';
+      if (e.response?.data != null) {
+        final data = e.response!.data;
+        if (data is Map<String, dynamic>) {
+          errorMessage = data['message'] ?? data['error'] ?? errorMessage;
+        } else if (data is String) {
+          errorMessage = data;
+        }
+      } else if (e.message != null && e.message!.isNotEmpty) {
+        errorMessage = e.message!;
+      }
+      
+      throw ServerException(errorMessage);
+    } catch (e) {
+      if (e is AppException) rethrow;
+      throw ServerException('Erreur inattendue: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<AuthResponseModel> verifyEmail(String tempToken, String code) async {
+    try {
+      final response = await apiClient.post<Map<String, dynamic>>(
+        '/auth/verify-email',
+        data: {
+          'tempToken': tempToken,
+          'code': code,
+        },
+      );
+
+      if (response.data == null) {
+        throw ServerException('Réponse invalide du serveur');
+      }
+
       final data = response.data!;
       
       // Si la réponse contient directement access_token, c'est le format du backend
@@ -104,15 +149,15 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       );
 
       if (!apiResponse.success || apiResponse.data == null) {
-        throw ServerException(apiResponse.message ?? 'Erreur lors de l\'inscription');
+        throw ServerException(apiResponse.message ?? 'Erreur lors de la vérification');
       }
 
       return AuthResponseModel.fromJson(apiResponse.data!);
     } on DioException catch (e) {
-      if (e.response?.statusCode == 409) {
-        throw ValidationException('Un utilisateur avec cet email existe déjà');
+      if (e.response?.statusCode == 401) {
+        throw UnauthorizedException('Code incorrect ou token expiré');
       }
-      throw ServerException('Erreur lors de l\'inscription: ${e.message}');
+      throw ServerException('Erreur lors de la vérification: ${e.message}');
     } catch (e) {
       if (e is AppException) rethrow;
       throw ServerException('Erreur inattendue: ${e.toString()}');

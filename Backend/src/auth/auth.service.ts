@@ -2,6 +2,7 @@ import {
   Injectable,
   ConflictException,
   UnauthorizedException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -10,6 +11,8 @@ import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
+import { EmailService } from './email.service';
 
 @Injectable()
 export class AuthService {
@@ -17,6 +20,7 @@ export class AuthService {
     @InjectRepository(User)
     private userRepository: Repository<User>,
     private jwtService: JwtService,
+    private emailService: EmailService,
   ) {}
 
   async register(registerDto: RegisterDto) {
@@ -29,25 +33,85 @@ export class AuthService {
       throw new ConflictException('Un utilisateur avec cet email existe déjà');
     }
 
+    // Générer un code de vérification à 6 chiffres
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+
     // Hasher le mot de passe
     const hashedPassword = await bcrypt.hash(registerDto.password, 10);
 
-    // Créer le nouvel utilisateur
-    const user = this.userRepository.create({
+    // Créer un token temporaire avec les données de l'utilisateur et le code
+    const tempPayload = {
       email: registerDto.email,
       password: hashedPassword,
       firstName: registerDto.firstName,
       lastName: registerDto.lastName,
+      code: verificationCode,
+    };
+
+    // Token temporaire valide 10 minutes
+    const tempToken = this.jwtService.sign(tempPayload, { expiresIn: '10m' });
+
+    // Envoyer l'email de vérification
+    try {
+      await this.emailService.sendVerificationCode(
+        registerDto.email,
+        verificationCode,
+        registerDto.firstName || undefined,
+      );
+    } catch (error) {
+      console.error('Échec envoi email:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Échec envoi email de vérification';
+      throw new InternalServerErrorException(errorMessage);
+    }
+
+    // Retourner le token temporaire (sans créer l'utilisateur)
+    return {
+      message: 'Code de vérification envoyé. Vérifiez votre email.',
+      tempToken,
+    };
+  }
+
+  async verifyEmail(verifyEmailDto: VerifyEmailDto) {
+    let payload: any;
+
+    // Vérifier le token temporaire
+    try {
+      payload = await this.jwtService.verifyAsync(verifyEmailDto.tempToken);
+    } catch {
+      throw new UnauthorizedException('Token invalide ou expiré');
+    }
+
+    // Vérifier le code
+    if (payload.code !== verifyEmailDto.code) {
+      throw new UnauthorizedException('Code de vérification incorrect');
+    }
+
+    // Vérifier si l'utilisateur existe déjà (au cas où)
+    const existingUser = await this.userRepository.findOne({
+      where: { email: payload.email },
+    });
+
+    if (existingUser) {
+      throw new ConflictException('Un utilisateur avec cet email existe déjà');
+    }
+
+    // Créer l'utilisateur maintenant que l'email est vérifié
+    const user = this.userRepository.create({
+      email: payload.email,
+      password: payload.password,
+      firstName: payload.firstName,
+      lastName: payload.lastName,
     });
 
     const savedUser = await this.userRepository.save(user);
 
-    // Générer le token JWT
-    const payload = { sub: savedUser.id, email: savedUser.email };
-    const access_token = this.jwtService.sign(payload);
+    // Générer le token JWT final
+    const jwtPayload = { sub: savedUser.id, email: savedUser.email };
+    const access_token = this.jwtService.sign(jwtPayload);
 
-    // Retourner le token et les informations utilisateur (sans le mot de passe)
+    // Retourner le token et les informations utilisateur
     return {
+      message: 'Compte créé avec succès',
       access_token,
       user: {
         id: savedUser.id,

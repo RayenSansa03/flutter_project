@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -9,6 +10,9 @@ async function bootstrap() {
   // Global prefix for API routes
   app.setGlobalPrefix('api');
   
+  // Global exception filter
+  app.useGlobalFilters(new HttpExceptionFilter());
+
   // Global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({

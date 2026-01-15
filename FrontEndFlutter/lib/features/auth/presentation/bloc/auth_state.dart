@@ -31,3 +31,16 @@ class AuthError extends AuthState {
   @override
   List<Object?> get props => [message];
 }
+
+class EmailVerificationRequired extends AuthState {
+  final String tempToken;
+  final String email;
+
+  const EmailVerificationRequired({
+    required this.tempToken,
+    required this.email,
+  });
+
+  @override
+  List<Object?> get props => [tempToken, email];
+}

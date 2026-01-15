@@ -33,19 +33,33 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<Failure, UserEntity>> register({
+  Future<Either<Failure, String>> register({
     required String email,
     required String password,
     String? firstName,
     String? lastName,
   }) async {
     try {
-      final authResponse = await remoteDataSource.register(
+      final registerResponse = await remoteDataSource.register(
         email: email,
         password: password,
         firstName: firstName,
         lastName: lastName,
       );
+      
+      // Retourner le tempToken pour la vérification email
+      return Right(registerResponse.tempToken);
+    } on AppException catch (e) {
+      return Left(mapExceptionToFailure(e));
+    } catch (e) {
+      return Left(ServerFailure('Erreur inattendue: ${e.toString()}'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, UserEntity>> verifyEmail(String tempToken, String code) async {
+    try {
+      final authResponse = await remoteDataSource.verifyEmail(tempToken, code);
       
       // Sauvegarder le token et l'utilisateur localement
       await localDataSource.saveToken(authResponse.accessToken);

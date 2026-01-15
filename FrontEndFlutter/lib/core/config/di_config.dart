@@ -9,6 +9,7 @@ import 'package:projet_flutter/features/auth/data/repositories/auth_repository_i
 import 'package:projet_flutter/features/auth/domain/repositories/auth_repository.dart';
 import 'package:projet_flutter/features/auth/domain/usecases/login_usecase.dart';
 import 'package:projet_flutter/features/auth/domain/usecases/register_usecase.dart';
+import 'package:projet_flutter/features/auth/domain/usecases/verify_email_usecase.dart';
 import 'package:projet_flutter/features/auth/domain/usecases/logout_usecase.dart';
 import 'package:projet_flutter/features/auth/presentation/bloc/auth_bloc.dart';
 
@@ -56,6 +57,10 @@ Future<void> configureDependencies() async {
     () => RegisterUseCase(getIt()),
   );
 
+  getIt.registerLazySingleton<VerifyEmailUseCase>(
+    () => VerifyEmailUseCase(getIt()),
+  );
+
   getIt.registerLazySingleton<LogoutUseCase>(
     () => LogoutUseCase(getIt()),
   );
@@ -65,6 +70,7 @@ Future<void> configureDependencies() async {
     () => AuthBloc(
       loginUseCase: getIt(),
       registerUseCase: getIt(),
+      verifyEmailUseCase: getIt(),
       logoutUseCase: getIt(),
     ),
   );

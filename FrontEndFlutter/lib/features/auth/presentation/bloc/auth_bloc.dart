@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:projet_flutter/core/errors/failures.dart';
 import 'package:projet_flutter/features/auth/domain/usecases/login_usecase.dart';
 import 'package:projet_flutter/features/auth/domain/usecases/register_usecase.dart';
+import 'package:projet_flutter/features/auth/domain/usecases/verify_email_usecase.dart';
 import 'package:projet_flutter/features/auth/domain/usecases/logout_usecase.dart';
 import 'package:projet_flutter/features/auth/presentation/bloc/auth_event.dart';
 import 'package:projet_flutter/features/auth/presentation/bloc/auth_state.dart';
@@ -9,15 +10,25 @@ import 'package:projet_flutter/features/auth/presentation/bloc/auth_state.dart';
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final LoginUseCase loginUseCase;
   final RegisterUseCase registerUseCase;
+  final VerifyEmailUseCase verifyEmailUseCase;
   final LogoutUseCase logoutUseCase;
+
+  // Stocker les données d'inscription pour le renvoi du code
+  String? _pendingEmail;
+  String? _pendingPassword;
+  String? _pendingFirstName;
+  String? _pendingLastName;
 
   AuthBloc({
     required this.loginUseCase,
     required this.registerUseCase,
+    required this.verifyEmailUseCase,
     required this.logoutUseCase,
   }) : super(AuthInitial()) {
     on<LoginEvent>(_onLogin);
     on<RegisterEvent>(_onRegister);
+    on<VerifyEmailEvent>(_onVerifyEmail);
+    on<ResendVerificationCodeEvent>(_onResendVerificationCode);
     on<LogoutEvent>(_onLogout);
     on<CheckAuthEvent>(_onCheckAuth);
   }
@@ -36,6 +47,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   Future<void> _onRegister(RegisterEvent event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
     
+    // Stocker les données pour le renvoi éventuel
+    _pendingEmail = event.email;
+    _pendingPassword = event.password;
+    _pendingFirstName = event.firstName;
+    _pendingLastName = event.lastName;
+    
     final result = await registerUseCase(
       email: event.email,
       password: event.password,
@@ -45,7 +62,56 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     
     result.fold(
       (failure) => emit(AuthError(_mapFailureToMessage(failure))),
-      (user) => emit(AuthAuthenticated(user)),
+      (tempToken) => emit(EmailVerificationRequired(
+        tempToken: tempToken,
+        email: event.email,
+      )),
+    );
+  }
+
+  Future<void> _onVerifyEmail(VerifyEmailEvent event, Emitter<AuthState> emit) async {
+    emit(AuthLoading());
+    
+    final result = await verifyEmailUseCase(event.tempToken, event.code);
+    
+    result.fold(
+      (failure) => emit(AuthError(_mapFailureToMessage(failure))),
+      (user) {
+        // Nettoyer les données en attente
+        _pendingEmail = null;
+        _pendingPassword = null;
+        _pendingFirstName = null;
+        _pendingLastName = null;
+        emit(AuthAuthenticated(user));
+      },
+    );
+  }
+
+  Future<void> _onResendVerificationCode(
+    ResendVerificationCodeEvent event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthLoading());
+    
+    // Stocker les nouvelles données
+    _pendingEmail = event.email;
+    _pendingPassword = event.password;
+    _pendingFirstName = event.firstName;
+    _pendingLastName = event.lastName;
+    
+    final result = await registerUseCase(
+      email: event.email,
+      password: event.password,
+      firstName: event.firstName,
+      lastName: event.lastName,
+    );
+    
+    result.fold(
+      (failure) => emit(AuthError(_mapFailureToMessage(failure))),
+      (tempToken) => emit(EmailVerificationRequired(
+        tempToken: tempToken,
+        email: event.email,
+      )),
     );
   }
 
