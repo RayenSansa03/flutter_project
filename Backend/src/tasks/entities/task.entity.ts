@@ -15,6 +15,21 @@ export class Task {
   id: string;
 
   @Column()
+  title: string;
+
+  @Column({ nullable: true })
+  description: string;
+
+  @Column({ default: false })
+  isCompleted: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  time: Date;
+
+  @Column({ nullable: true })
+  durationMinutes: number;
+
+  @Column()
   userId: string;
 
   @ManyToOne(() => User)

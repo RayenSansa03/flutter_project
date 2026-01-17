@@ -16,7 +16,12 @@ class AuthInterceptor extends Interceptor {
     // Récupérer le token depuis le stockage sécurisé
     final token = await _storage.read(key: _tokenKey);
     
-    if (token != null && token.isNotEmpty) {
+    // N'ajouter le token que pour les requêtes vers l'API principale
+    final isBackendRequest = !options.path.startsWith('http') || 
+                             options.path.contains('127.0.0.1:3000') ||
+                             options.path.contains('localhost:3000');
+
+    if (isBackendRequest && token != null && token.isNotEmpty) {
       // Ajouter le token dans le header Authorization
       options.headers['Authorization'] = 'Bearer $token';
     }

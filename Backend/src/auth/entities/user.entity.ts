@@ -4,12 +4,12 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
-  // OneToMany, // Décommenter quand les autres entités seront créées
+  OneToMany,
 } from 'typeorm';
 // Imports commentés temporairement - à décommenter quand les entités seront créées
 // import { Session } from '../../sessions/entities/session.entity';
 // import { Project } from '../../projects/entities/project.entity';
-// import { Task } from '../../tasks/entities/task.entity';
+import { Task } from '../../tasks/entities/task.entity';
 // import { Habit } from '../../habits/entities/habit.entity';
 // import { Capsule } from '../../capsules/entities/capsule.entity';
 // import { CircleMember } from '../../circle/entities/circle-member.entity';
@@ -47,8 +47,8 @@ export class User {
   // @OneToMany(() => Project, (project) => project.user)
   // projects: Project[];
 
-  // @OneToMany(() => Task, (task) => task.user)
-  // tasks: Task[];
+  @OneToMany(() => Task, (task) => task.user)
+  tasks: Task[];
 
   // @OneToMany(() => Habit, (habit) => habit.user)
   // habits: Habit[];

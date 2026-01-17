@@ -1,0 +1,32 @@
+# Common
+.env
+*.env
+*.log
+.DS_Store
+.vscode/
+.idea/
+
+# Backend
+Backend/node_modules/
+Backend/dist/
+Backend/build/
+
+# Frontend (Flutter)
+FrontEndFlutter/.dart_tool/
+FrontEndFlutter/build/
+FrontEndFlutter/.flutter-plugins
+FrontEndFlutter/.flutter-plugins-dependencies
+FrontEndFlutter/.metadata
+FrontEndFlutter/pubspec.lock
+# NOTE: Usually pubspec.lock is pushed for apps, but since we want to be safe... 
+# actually let's keep it standard: don't ignore pubspec.lock unless requested.
+
+# RAG Services
+**/__pycache__/
+**/*.pyc
+**/chroma_db*/
+RAG_export/**/*.env
+
+# Prisma
+Backend/prisma/migrations/
+# (Keep schema, but hide secrets in .env)

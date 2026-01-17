@@ -8,35 +8,44 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 @Controller('sessions')
 @UseGuards(JwtAuthGuard)
 export class SessionsController {
-  constructor(private readonly sessionsService: SessionsService) {}
+  constructor(private readonly sessionsService: SessionsService) { }
 
   @Post()
-  create(@Body() createSessionDto: CreateSessionDto, @CurrentUser() user: any) {
-    // TODO: Implémenter la création
-    return { message: 'Create session - to be implemented' };
+  create(@Body() createSessionDto: CreateSessionDto, @CurrentUser('userId') userId: string) {
+    return this.sessionsService.create(createSessionDto, userId);
   }
 
   @Get()
-  findAll(@CurrentUser() user: any) {
-    // TODO: Implémenter la récupération de toutes les sessions
-    return { message: 'Get all sessions - to be implemented' };
+  findAll(@CurrentUser('userId') userId: string) {
+    return this.sessionsService.findAll(userId);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @CurrentUser() user: any) {
-    // TODO: Implémenter la récupération d'une session
-    return { message: 'Get session - to be implemented' };
+  findOne(@Param('id') id: string, @CurrentUser('userId') userId: string) {
+    return this.sessionsService.findOne(id, userId);
   }
 
   @Put(':id')
-  update(@Param('id') id: string, @Body() updateSessionDto: UpdateSessionDto, @CurrentUser() user: any) {
-    // TODO: Implémenter la mise à jour
-    return { message: 'Update session - to be implemented' };
+  update(
+    @Param('id') id: string,
+    @Body() updateSessionDto: UpdateSessionDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.sessionsService.update(id, updateSessionDto, userId);
+  }
+
+  @Post(':id/join')
+  join(@Param('id') id: string, @CurrentUser('userId') userId: string) {
+    return this.sessionsService.joinSession(id, userId);
+  }
+
+  @Delete(':id/leave')
+  leave(@Param('id') id: string, @CurrentUser('userId') userId: string) {
+    return this.sessionsService.leaveSession(id, userId);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string, @CurrentUser() user: any) {
-    // TODO: Implémenter la suppression
-    return { message: 'Delete session - to be implemented' };
+  remove(@Param('id') id: string, @CurrentUser('userId') userId: string) {
+    return this.sessionsService.remove(id, userId);
   }
 }

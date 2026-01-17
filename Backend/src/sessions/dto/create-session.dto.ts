@@ -1,3 +1,24 @@
+import { IsString, IsOptional, IsBoolean, IsNumber, IsArray } from 'class-validator';
+
 export class CreateSessionDto {
-  // TODO: Implémenter les champs nécessaires
+  @IsString()
+  title: string;
+
+  @IsOptional()
+  description?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  isGroup?: boolean;
+
+  @IsNumber()
+  durationMinutes: number;
+
+  @IsOptional()
+  startTime?: any;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  invitedUserIds?: string[];
 }

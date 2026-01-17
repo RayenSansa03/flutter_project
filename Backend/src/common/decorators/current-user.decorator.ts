@@ -1,12 +1,14 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 
 /**
- * Decorator pour récupérer l'utilisateur actuel depuis la requête
- * Utilisé avec JWT Guard
+ * Decorator pour récupérer l'utilisateur actuel ou un champ spécifique de l'utilisateur
+ * Utilisé après JwtAuthGuard
  */
 export const CurrentUser = createParamDecorator(
-  (data: unknown, ctx: ExecutionContext) => {
+  (data: string | undefined, ctx: ExecutionContext) => {
     const request = ctx.switchToHttp().getRequest();
-    return request.user;
+    const user = request.user;
+
+    return data ? user?.[data] : user;
   },
 );

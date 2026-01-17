@@ -50,6 +50,7 @@ class ErrorInterceptor extends Interceptor {
         error: exception,
         type: err.type,
         response: err.response,
+        message: exception.toString(),
       ),
     );
   }

@@ -178,8 +178,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onCheckAuth(CheckAuthEvent event, Emitter<AuthState> emit) async {
-    // TODO: Implémenter la vérification de l'authentification
-    emit(AuthUnauthenticated());
+    final result = await getProfileUseCase();
+    
+    result.fold(
+      (failure) => emit(AuthUnauthenticated()),
+      (user) => emit(AuthAuthenticated(user)),
+    );
   }
 
   String _mapFailureToMessage(Failure failure) {

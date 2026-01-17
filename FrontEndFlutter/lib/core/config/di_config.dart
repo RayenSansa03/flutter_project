@@ -15,6 +15,17 @@ import 'package:projet_flutter/features/auth/domain/usecases/update_profile_usec
 import 'package:projet_flutter/features/auth/domain/usecases/upload_profile_image_usecase.dart';
 import 'package:projet_flutter/features/auth/domain/usecases/logout_usecase.dart';
 import 'package:projet_flutter/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:projet_flutter/features/daily_planner/data/datasources/daily_planner_remote_datasource.dart';
+import 'package:projet_flutter/features/daily_planner/data/repositories/daily_planner_repository_impl.dart';
+import 'package:projet_flutter/features/daily_planner/domain/repositories/daily_planner_repository.dart';
+import 'package:projet_flutter/features/daily_planner/domain/usecases/get_tasks_usecase.dart';
+import 'package:projet_flutter/features/daily_planner/domain/usecases/manage_tasks_usecases.dart';
+import 'package:projet_flutter/features/daily_planner/presentation/bloc/daily_planner_bloc.dart';
+import 'package:projet_flutter/features/focus_session/data/datasources/focus_session_remote_datasource.dart';
+import 'package:projet_flutter/features/focus_session/data/repositories/focus_session_repository_impl.dart';
+import 'package:projet_flutter/features/focus_session/domain/repositories/focus_session_repository.dart';
+import 'package:projet_flutter/features/focus_session/domain/usecases/focus_session_usecases.dart';
+import 'package:projet_flutter/features/focus_session/presentation/bloc/focus_session_bloc.dart';
 
 final getIt = GetIt.instance;
 
@@ -81,7 +92,7 @@ Future<void> configureDependencies() async {
   );
 
   // Auth - BLoC
-  getIt.registerFactory<AuthBloc>(
+  getIt.registerLazySingleton<AuthBloc>(
     () => AuthBloc(
       loginUseCase: getIt(),
       registerUseCase: getIt(),
@@ -90,6 +101,85 @@ Future<void> configureDependencies() async {
       updateProfileUseCase: getIt(),
       uploadProfileImageUseCase: getIt(),
       logoutUseCase: getIt(),
+    ),
+  );
+
+  // Daily Planner - Data Sources
+  getIt.registerLazySingleton<DailyPlannerRemoteDataSource>(
+    () => DailyPlannerRemoteDataSourceImpl(apiClient: getIt()),
+  );
+
+  // Daily Planner - Repository
+  getIt.registerLazySingleton<DailyPlannerRepository>(
+    () => DailyPlannerRepositoryImpl(remoteDataSource: getIt()),
+  );
+
+  // Daily Planner - Use Cases
+  getIt.registerLazySingleton<GetTasksUseCase>(
+    () => GetTasksUseCase(getIt()),
+  );
+
+  getIt.registerLazySingleton<AddTaskUseCase>(
+    () => AddTaskUseCase(getIt()),
+  );
+
+  getIt.registerLazySingleton<UpdateTaskUseCase>(
+    () => UpdateTaskUseCase(getIt()),
+  );
+
+  getIt.registerLazySingleton<DeleteTaskUseCase>(
+    () => DeleteTaskUseCase(getIt()),
+  );
+
+  getIt.registerLazySingleton<GenerateTasksUseCase>(
+    () => GenerateTasksUseCase(getIt()),
+  );
+
+  // Daily Planner - BLoC
+  getIt.registerFactory<DailyPlannerBloc>(
+    () => DailyPlannerBloc(
+      getTasksUseCase: getIt(),
+      addTaskUseCase: getIt(),
+      updateTaskUseCase: getIt(),
+      deleteTaskUseCase: getIt(),
+      generateTasksUseCase: getIt(),
+    ),
+  );
+  // Focus Session - Data Sources
+  getIt.registerLazySingleton<FocusSessionRemoteDataSource>(
+    () => FocusSessionRemoteDataSourceImpl(apiClient: getIt()),
+  );
+
+  // Focus Session - Repository
+  getIt.registerLazySingleton<FocusSessionRepository>(
+    () => FocusSessionRepositoryImpl(remoteDataSource: getIt()),
+  );
+
+  // Focus Session - Use Cases
+  getIt.registerLazySingleton<GetFocusSessionsUseCase>(
+    () => GetFocusSessionsUseCase(getIt()),
+  );
+  getIt.registerLazySingleton<CreateFocusSessionUseCase>(
+    () => CreateFocusSessionUseCase(getIt()),
+  );
+  getIt.registerLazySingleton<UpdateFocusSessionUseCase>(
+    () => UpdateFocusSessionUseCase(getIt()),
+  );
+  getIt.registerLazySingleton<JoinFocusSessionUseCase>(
+    () => JoinFocusSessionUseCase(getIt()),
+  );
+  getIt.registerLazySingleton<LeaveFocusSessionUseCase>(
+    () => LeaveFocusSessionUseCase(getIt()),
+  );
+
+  // Focus Session - BLoC
+  getIt.registerLazySingleton<FocusSessionBloc>(
+    () => FocusSessionBloc(
+      getFocusSessionsUseCase: getIt(),
+      createFocusSessionUseCase: getIt(),
+      updateFocusSessionUseCase: getIt(),
+      joinFocusSessionUseCase: getIt(),
+      leaveFocusSessionUseCase: getIt(),
     ),
   );
 }
